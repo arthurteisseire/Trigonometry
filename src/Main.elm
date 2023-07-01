@@ -53,7 +53,7 @@ view model =
                 [ transform <| [ Translate 200 200 ]
                 , width <| px 800
                 , height <| px 600
-                , viewBox 0 0 10 10
+                , viewBox 0 0 4 4
                 ]
                 [ viewUnitCircle
                 ]
@@ -65,29 +65,29 @@ view model =
 viewUnitCircle : Svg msg
 viewUnitCircle =
     g
-        [ transform <| [ Translate 5 5 ]
+        [ transform <| [ Translate 2 2 ]
         ]
         [ circle
-            [ r <| px pi
+            [ r <| px 1
             , fill <| Paint Color.grey
             ]
             []
         , line
-            [ x1 <| px pi
+            [ x1 <| px 1
             , y1 <| px 0
-            , x2 <| px -pi
+            , x2 <| px -1
             , y2 <| px 0
             , stroke <| Paint Color.blue
-            , strokeWidth <| px 0.05
+            , strokeWidth <| px 0.02
             ]
             []
         , line
             [ x1 <| px 0
-            , y1 <| px -pi
+            , y1 <| px -1
             , x2 <| px 0
-            , y2 <| px pi
+            , y2 <| px 1
             , stroke <| Paint Color.blue
-            , strokeWidth <| px 0.05
+            , strokeWidth <| px 0.02
             ]
             []
         ]
