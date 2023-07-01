@@ -1,12 +1,12 @@
 module Main exposing (..)
 
 import Browser
-import Color
+import Color exposing (Color)
 import Html exposing (Html)
 import Html.Attributes as HA
 import TypedSvg exposing (..)
-import TypedSvg.Attributes exposing (..)
-import TypedSvg.Core exposing (Svg)
+import TypedSvg.Attributes as AT exposing (..)
+import TypedSvg.Core exposing (Svg, text)
 import TypedSvg.Types exposing (..)
 
 
@@ -62,6 +62,78 @@ view model =
     }
 
 
+xp length =
+    x <| px -length
+
+
+xp1 length =
+    x1 <| px -length
+
+
+xp2 length =
+    x2 <| px -length
+
+
+yp length =
+    y <| px -length
+
+
+yp1 length =
+    y1 <| px -length
+
+
+yp2 length =
+    y2 <| px -length
+
+
+type alias Vector2 =
+    { x : Float
+    , y : Float
+    }
+
+
+type alias StrokeWidth =
+    Float
+
+
+defaultSvgVectorWithText : Vector2 -> Svg msg
+defaultSvgVectorWithText v =
+    g
+        []
+        [ defaultSvgVector v
+        , text_
+            [ xp v.x
+            , yp v.y
+            , fontSize <| px 0.12
+            ]
+            [ text <|
+                "("
+                    ++ String.fromFloat v.x
+                    ++ ", "
+                    ++ String.fromFloat v.y
+                    ++ ")"
+            ]
+        ]
+
+
+defaultSvgVector : Vector2 -> Svg msg
+defaultSvgVector =
+    svgVector 0.02 Color.blue
+
+
+svgVector : StrokeWidth -> Color -> Vector2 -> Svg msg
+svgVector strokeWidth_ color v =
+    line
+        [ xp1 0
+        , yp1 0
+        , xp2 v.x
+        , yp2 v.y
+        , stroke <| Paint color
+        , strokeWidth <| px strokeWidth_
+        ]
+        []
+
+
 viewUnitCircle : Svg msg
 viewUnitCircle =
     g
@@ -72,24 +144,10 @@ viewUnitCircle =
             , fill <| Paint Color.grey
             ]
             []
-        , line
-            [ x1 <| px 1
-            , y1 <| px 0
-            , x2 <| px -1
-            , y2 <| px 0
-            , stroke <| Paint Color.blue
-            , strokeWidth <| px 0.02
-            ]
-            []
-        , line
-            [ x1 <| px 0
-            , y1 <| px -1
-            , x2 <| px 0
-            , y2 <| px 1
-            , stroke <| Paint Color.blue
-            , strokeWidth <| px 0.02
-            ]
-            []
+        , defaultSvgVectorWithText { x = -1, y = 0 }
+        , defaultSvgVectorWithText { x = 1, y = 0 }
+        , defaultSvgVectorWithText { x = 0, y = -1 }
+        , defaultSvgVectorWithText { x = 0, y = 1 }
         ]
 
 
