@@ -2,8 +2,10 @@ module Main exposing (..)
 
 import Browser
 import Color exposing (Color)
+import Dict exposing (Dict)
 import Html exposing (Html)
 import Html.Attributes as HA
+import Html.Events as HE
 import TypedSvg exposing (..)
 import TypedSvg.Attributes as AT exposing (..)
 import TypedSvg.Core exposing (Svg, text)
@@ -20,32 +22,53 @@ main =
 
 
 type Msg
-    = Update
+    = Discard
+    | AddVector
+    | ModifyVector VectorId Vector2
+
+
+type alias VectorId =
+    Int
 
 
 type alias Model =
-    {}
+    { vectors : Dict VectorId Vector2
+    }
 
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( {}, Cmd.none )
+    ( { vectors = Dict.empty }, Cmd.none )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
+    ( updateModel msg model, Cmd.none )
+
+
+updateModel : Msg -> Model -> Model
+updateModel msg model =
     case msg of
-        Update ->
-            ( model, Cmd.none )
+        Discard ->
+            model
+
+        AddVector ->
+            { model | vectors = Dict.insert (Dict.size model.vectors) { x = 0, y = 0 } model.vectors }
+
+        ModifyVector id vector ->
+            { model
+                | vectors =
+                    Dict.insert id vector model.vectors
+            }
 
 
 view : Model -> Browser.Document Msg
 view model =
     let
-        boxX =
+        nbCellsX =
             4
 
-        boxY =
+        nbCellsY =
             4
     in
     { title = "Unit circle"
@@ -60,18 +83,63 @@ view model =
                 [ transform <| [ Translate 100 100 ]
                 , width <| percent 50
                 , height <| percent 50
-                , viewBox 0 0 boxX boxY
+                , viewBox 0 0 nbCellsX nbCellsY
                 ]
                 [ g
-                    [ transform <| [ Translate (boxX / 2) (boxY / 2) ]
+                    [ transform <| [ Translate (nbCellsX / 2) (nbCellsY / 2) ]
                     , width <| percent 100
                     , height <| percent 100
                     ]
-                    [ viewUnitCircle ]
+                    [ viewUnitCircle
+                    , drawVectors model
+                    ]
+                ]
+            , Html.div
+                [ HA.id "DisplayDebug"
+                , HA.style "width" "30%"
+                , HA.style "height" "100%"
+                , HA.style "float" "right"
+                , HA.style "border-style" "solid"
+                , HA.style "border-width" "1px"
+                ]
+                [ Html.div
+                    [ HA.id "ComponentsDebug"
+                    , HA.style "height" "100%"
+                    , HA.style "display" "flex"
+                    , HA.style "flex-direction" "column"
+                    , HA.style "justify-content" "start"
+                    ]
+                    [ Html.button
+                        [ HE.onClick <| AddVector
+                        ]
+                        [ Html.text "Add vector"
+                        ]
+                    , Html.div
+                        []
+                        (dictMapToList
+                            (\id vector ->
+                                Html.section
+                                    [ HA.style "border-style" "solid"
+                                    , HA.style "border-width" "1px"
+                                    ]
+                                    [ v2ToHtml id vector
+                                    ]
+                            )
+                            model.vectors
+                        )
+                    ]
                 ]
             ]
         ]
     }
+
+
+dictMapToList : (k -> v -> a) -> Dict k v -> List a
+dictMapToList func dict =
+    Dict.foldl
+        (\k v list -> func k v :: list)
+        []
+        dict
 
 
 xp length =
@@ -102,6 +170,48 @@ type alias Vector2 =
     { x : Float
     , y : Float
     }
+
+
+drawVectors : Model -> Svg msg
+drawVectors model =
+    g
+        []
+        (dictMapToList (\_ -> svgVector 0.03 Color.purple) model.vectors)
+
+
+v2ToHtml : VectorId -> Vector2 -> Html Msg
+v2ToHtml id v =
+    Html.div
+        []
+        [ Html.text <| "x=" ++ String.fromFloat v.x
+        , Html.input
+            [ HA.type_ "float"
+            , HE.onInput
+                (\str ->
+                    case String.toFloat str of
+                        Nothing ->
+                            Discard
+
+                        Just value ->
+                            ModifyVector id { v | x = value }
+                )
+            ]
+            []
+        , Html.text <| "y=" ++ String.fromFloat v.y
+        , Html.input
+            [ HA.type_ "float"
+            , HE.onInput
+                (\str ->
+                    case String.toFloat str of
+                        Nothing ->
+                            Discard
+
+                        Just value ->
+                            ModifyVector id { v | y = value }
+                )
+            ]
+            []
+        ]
 
 
 type alias StrokeWidth =
@@ -229,8 +339,6 @@ viewUnitCircle =
         , defaultSvgDiagVectorWithTextDivPi -1 3
         , defaultSvgDiagVectorWithTextDivPi -4 6
         , defaultSvgDiagVectorWithTextDivPi -5 6
-        , defaultSvgVectorWithSquare { x = 2, y = 1 }
-        , defaultSvgVectorWithSquare { x = 1, y = 2 }
         ]
 
 
