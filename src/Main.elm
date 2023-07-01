@@ -63,15 +63,15 @@ view model =
 
 
 xp length =
-    x <| px -length
+    x <| px length
 
 
 xp1 length =
-    x1 <| px -length
+    x1 <| px length
 
 
 xp2 length =
-    x2 <| px -length
+    x2 <| px length
 
 
 yp length =
@@ -96,8 +96,48 @@ type alias StrokeWidth =
     Float
 
 
+defaultSvgDiagVectorWithTextDivPi : Float -> Float -> Svg msg
+defaultSvgDiagVectorWithTextDivPi numerator denominator =
+    let
+        radian =
+            numerator * pi / denominator
+    in
+    defaultSvgVectorWithCustomText
+        ("("
+            ++ (if numerator /= 1 then
+                    String.fromFloat numerator
+
+                else
+                    ""
+               )
+            ++ "π"
+            ++ (if denominator /= 1 then
+                    "/" ++ String.fromFloat denominator
+
+                else
+                    ""
+               )
+            ++ ")"
+        )
+        { x = cos radian
+        , y = sin radian
+        }
+
+
 defaultSvgVectorWithText : Vector2 -> Svg msg
 defaultSvgVectorWithText v =
+    defaultSvgVectorWithCustomText
+        ("("
+            ++ String.fromFloat v.x
+            ++ ", "
+            ++ String.fromFloat v.y
+            ++ ")"
+        )
+        v
+
+
+defaultSvgVectorWithCustomText : String -> Vector2 -> Svg msg
+defaultSvgVectorWithCustomText s v =
     g
         []
         [ defaultSvgVector v
@@ -106,13 +146,7 @@ defaultSvgVectorWithText v =
             , yp v.y
             , fontSize <| px 0.12
             ]
-            [ text <|
-                "("
-                    ++ String.fromFloat v.x
-                    ++ ", "
-                    ++ String.fromFloat v.y
-                    ++ ")"
-            ]
+            [ text s ]
         ]
 
 
@@ -148,6 +182,15 @@ viewUnitCircle =
         , defaultSvgVectorWithText { x = 1, y = 0 }
         , defaultSvgVectorWithText { x = 0, y = -1 }
         , defaultSvgVectorWithText { x = 0, y = 1 }
+        , defaultSvgDiagVectorWithTextDivPi 1 6
+        , defaultSvgDiagVectorWithTextDivPi 1 3
+        , defaultSvgDiagVectorWithTextDivPi 4 6
+        , defaultSvgDiagVectorWithTextDivPi 5 6
+        , defaultSvgDiagVectorWithTextDivPi 1 1
+        , defaultSvgDiagVectorWithTextDivPi -1 6
+        , defaultSvgDiagVectorWithTextDivPi -1 3
+        , defaultSvgDiagVectorWithTextDivPi -4 6
+        , defaultSvgDiagVectorWithTextDivPi -5 6
         ]
 
 
