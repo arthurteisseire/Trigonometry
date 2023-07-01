@@ -31,6 +31,11 @@ type alias VectorId =
     Int
 
 
+vectorIdToString : VectorId -> String
+vectorIdToString =
+    String.fromInt
+
+
 type alias Model =
     { vectors : Dict VectorId Vector2
     }
@@ -183,7 +188,8 @@ v2ToHtml : VectorId -> Vector2 -> Html Msg
 v2ToHtml id v =
     Html.div
         []
-        [ Html.text <| "x=" ++ String.fromFloat v.x
+        [ Html.text <| "(id:" ++ vectorIdToString id ++ ")"
+        , Html.text <| "x=" ++ String.fromFloat v.x
         , Html.input
             [ HA.type_ "float"
             , HE.onInput
