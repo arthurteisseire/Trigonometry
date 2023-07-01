@@ -41,21 +41,33 @@ update msg model =
 
 view : Model -> Browser.Document Msg
 view model =
-    { title = "ECS"
+    let
+        boxX =
+            4
+
+        boxY =
+            4
+    in
+    { title = "Unit circle"
     , body =
         [ Html.div
             [ HA.id "MainWindow"
             , HA.style "width" "100%"
-            , HA.style "height" "955px"
+            , HA.style "height" "800px"
             , HA.style "background-color" "#b3b3b3"
             ]
             [ svg
-                [ transform <| [ Translate 200 200 ]
-                , width <| px 800
-                , height <| px 600
-                , viewBox 0 0 4 4
+                [ transform <| [ Translate 100 100 ]
+                , width <| percent 50
+                , height <| percent 50
+                , viewBox 0 0 boxX boxY
                 ]
-                [ viewUnitCircle
+                [ g
+                    [ transform <| [ Translate (boxX / 2) (boxY / 2) ]
+                    , width <| percent 100
+                    , height <| percent 100
+                    ]
+                    [ viewUnitCircle ]
                 ]
             ]
         ]
@@ -150,6 +162,33 @@ defaultSvgVectorWithCustomText s v =
         ]
 
 
+defaultSvgVectorWithSquare : Vector2 -> Svg msg
+defaultSvgVectorWithSquare v =
+    g []
+        [ defaultSvgVector v
+        , svgVector 0.01 Color.green { x = v.x, y = 0 }
+        , svgVector 0.01 Color.green { x = 0, y = v.y }
+        , line
+            [ xp1 v.x
+            , yp1 0
+            , xp2 v.x
+            , yp2 v.y
+            , stroke <| Paint Color.purple
+            , strokeWidth <| px 0.01
+            ]
+            []
+        , line
+            [ xp1 0
+            , yp1 v.y
+            , xp2 v.x
+            , yp2 v.y
+            , stroke <| Paint Color.purple
+            , strokeWidth <| px 0.01
+            ]
+            []
+        ]
+
+
 defaultSvgVector : Vector2 -> Svg msg
 defaultSvgVector =
     svgVector 0.02 Color.blue
@@ -171,8 +210,7 @@ svgVector strokeWidth_ color v =
 viewUnitCircle : Svg msg
 viewUnitCircle =
     g
-        [ transform <| [ Translate 2 2 ]
-        ]
+        []
         [ circle
             [ r <| px 1
             , fill <| Paint Color.grey
@@ -191,6 +229,8 @@ viewUnitCircle =
         , defaultSvgDiagVectorWithTextDivPi -1 3
         , defaultSvgDiagVectorWithTextDivPi -4 6
         , defaultSvgDiagVectorWithTextDivPi -5 6
+        , defaultSvgVectorWithSquare { x = 2, y = 1 }
+        , defaultSvgVectorWithSquare { x = 1, y = 2 }
         ]
 
 
