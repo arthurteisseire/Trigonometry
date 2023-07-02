@@ -2,6 +2,6 @@
 
 This project provides tools for trigonometry visualization.
 
-## Install
+## Run
 - clone the project
 - open `index.html`
