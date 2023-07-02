@@ -1,7 +1,8 @@
 module Main exposing (..)
 
+import Bitwise exposing (shiftLeftBy)
 import Browser
-import Color exposing (Color)
+import Color exposing (Color(..))
 import Dict exposing (Dict)
 import File exposing (File)
 import File.Download
@@ -35,6 +36,7 @@ main =
 type alias Model =
     { vectors : Dict VectorId (Vector2 Float)
     , vectorControllers : Dict VectorId VectorController
+    , vectorColors : Dict VectorId Color
     }
 
 
@@ -58,7 +60,12 @@ type VectorController
 
 init : () -> ( Model, Cmd SideMsg )
 init _ =
-    ( { vectors = Dict.empty, vectorControllers = Dict.empty }, Cmd.none )
+    ( { vectors = Dict.empty
+      , vectorControllers = Dict.empty
+      , vectorColors = Dict.empty
+      }
+    , Cmd.none
+    )
 
 
 
@@ -79,6 +86,7 @@ type Msg
     | AddVector
     | RemoveVector VectorId
     | ModifyVector VectorId (Vector2 Float)
+    | ChangeVectorColor VectorId Color
     | ChangeVectorController VectorId VectorController
     | ModifyIdRefController VectorId ( VectorId, VectorId )
 
@@ -133,18 +141,27 @@ updateModel msg model =
                     Dict.insert (Dict.size model.vectors) { x = 0, y = 0 } model.vectors
                 , vectorControllers =
                     Dict.insert (Dict.size model.vectorControllers) PositionController model.vectorControllers
+                , vectorColors =
+                    Dict.insert (Dict.size model.vectorColors) Color.purple model.vectorColors
             }
 
         RemoveVector id ->
             { model
                 | vectors = Dict.remove id model.vectors
                 , vectorControllers = Dict.remove id model.vectorControllers
+                , vectorColors = Dict.remove id model.vectorColors
             }
 
         ModifyVector id vector ->
             { model
                 | vectors =
                     Dict.insert id vector model.vectors
+            }
+
+        ChangeVectorColor id color ->
+            { model
+                | vectorColors =
+                    Dict.insert id color model.vectorColors
             }
 
         ChangeVectorController id controller ->
@@ -284,7 +301,17 @@ drawVectors : Model -> Svg msg
 drawVectors model =
     g
         []
-        (dictMapToList (\_ -> svgVector 0.03 Color.purple) model.vectors)
+        (dictMapToList
+            (\id ->
+                case Dict.get id model.vectorColors of
+                    Just color ->
+                        svgVector 0.03 color
+
+                    Nothing ->
+                        svgVector 0.03 Color.purple
+            )
+            model.vectors
+        )
 
 
 v2ControllerToHtml : Model -> VectorId -> Html Msg
@@ -324,6 +351,25 @@ v2ControllerToHtml model id =
                         ]
                         [ Html.text "IdRef" ]
                     ]
+                , Html.input
+                    [ HA.type_ "color"
+                    , case Dict.get id model.vectorColors of
+                        Just color ->
+                            HA.value (toHex color).hex
+
+                        Nothing ->
+                            HA.value "#000000"
+                    , HE.onInput
+                        (\s ->
+                            case colorFromHex s of
+                                Just color ->
+                                    ChangeVectorColor id color
+
+                                Nothing ->
+                                    Discard
+                        )
+                    ]
+                    []
                 , Html.button
                     [ HE.onClick (RemoveVector id)
                     , HA.style "color" "red"
@@ -551,9 +597,25 @@ svgVector strokeWidth_ color v =
 
 modelJsonDecoder : Decoder Model
 modelJsonDecoder =
-    Decode.map2 Model
+    Decode.map3 Model
         vectorsDecoder
         vectorControllersDecoder
+        vectorColorDecoder
+
+
+vectorColorDecoder : Decoder (Dict VectorId Color)
+vectorColorDecoder =
+    Decode.field "vectorColors" (Decode.dict colorDecoder)
+        |> vectorIdDictDecoder
+
+
+colorDecoder : Decoder Color
+colorDecoder =
+    Decode.map4 Color.rgba
+        (Decode.field "r" Decode.float)
+        (Decode.field "g" Decode.float)
+        (Decode.field "b" Decode.float)
+        (Decode.field "a" Decode.float)
 
 
 vectorControllersDecoder : Decoder (Dict VectorId VectorController)
@@ -644,6 +706,26 @@ modelToJson model =
                 vectorControllerToJson
                 model.vectorControllers
           )
+        , ( "vectorColors"
+          , Encode.dict
+                vectorIdToString
+                colorToJson
+                model.vectorColors
+          )
+        ]
+
+
+colorToJson : Color -> Encode.Value
+colorToJson color =
+    let
+        rgba =
+            Color.toRgba color
+    in
+    Encode.object
+        [ ( "r", Encode.float rgba.red )
+        , ( "g", Encode.float rgba.green )
+        , ( "b", Encode.float rgba.blue )
+        , ( "a", Encode.float rgba.alpha )
         ]
 
 
@@ -732,3 +814,194 @@ dictMapToList func dict =
         (\k v list -> func k v :: list)
         []
         dict
+
+
+
+-- Color helpers
+
+
+colorFromHex : String -> Maybe Color
+colorFromHex hexString =
+    case String.toList hexString of
+        [ '#', r, g, b ] ->
+            fromHex8 ( r, r ) ( g, g ) ( b, b ) ( 'f', 'f' )
+
+        [ r, g, b ] ->
+            fromHex8 ( r, r ) ( g, g ) ( b, b ) ( 'f', 'f' )
+
+        [ '#', r, g, b, a ] ->
+            fromHex8 ( r, r ) ( g, g ) ( b, b ) ( a, a )
+
+        [ r, g, b, a ] ->
+            fromHex8 ( r, r ) ( g, g ) ( b, b ) ( a, a )
+
+        [ '#', r1, r2, g1, g2, b1, b2 ] ->
+            fromHex8 ( r1, r2 ) ( g1, g2 ) ( b1, b2 ) ( 'f', 'f' )
+
+        [ r1, r2, g1, g2, b1, b2 ] ->
+            fromHex8 ( r1, r2 ) ( g1, g2 ) ( b1, b2 ) ( 'f', 'f' )
+
+        [ '#', r1, r2, g1, g2, b1, b2, a1, a2 ] ->
+            fromHex8 ( r1, r2 ) ( g1, g2 ) ( b1, b2 ) ( a1, a2 )
+
+        [ r1, r2, g1, g2, b1, b2, a1, a2 ] ->
+            fromHex8 ( r1, r2 ) ( g1, g2 ) ( b1, b2 ) ( a1, a2 )
+
+        _ ->
+            Nothing
+
+
+fromHex8 : ( Char, Char ) -> ( Char, Char ) -> ( Char, Char ) -> ( Char, Char ) -> Maybe Color
+fromHex8 ( r1, r2 ) ( g1, g2 ) ( b1, b2 ) ( a1, a2 ) =
+    Maybe.map4
+        (\r g b a ->
+            Color.fromRgba
+                { red = toFloat r / 255
+                , green = toFloat g / 255
+                , blue = toFloat b / 255
+                , alpha = toFloat a / 255
+                }
+        )
+        (hex2ToInt r1 r2)
+        (hex2ToInt g1 g2)
+        (hex2ToInt b1 b2)
+        (hex2ToInt a1 a2)
+
+
+hex2ToInt : Char -> Char -> Maybe Int
+hex2ToInt c1 c2 =
+    Maybe.map2 (\v1 v2 -> shiftLeftBy 4 v1 + v2) (hexToInt c1) (hexToInt c2)
+
+
+hexToInt : Char -> Maybe Int
+hexToInt char =
+    case Char.toLower char of
+        '0' ->
+            Just 0
+
+        '1' ->
+            Just 1
+
+        '2' ->
+            Just 2
+
+        '3' ->
+            Just 3
+
+        '4' ->
+            Just 4
+
+        '5' ->
+            Just 5
+
+        '6' ->
+            Just 6
+
+        '7' ->
+            Just 7
+
+        '8' ->
+            Just 8
+
+        '9' ->
+            Just 9
+
+        'a' ->
+            Just 10
+
+        'b' ->
+            Just 11
+
+        'c' ->
+            Just 12
+
+        'd' ->
+            Just 13
+
+        'e' ->
+            Just 14
+
+        'f' ->
+            Just 15
+
+        _ ->
+            Nothing
+
+
+toHex : Color -> { hex : String, alpha : Float }
+toHex c =
+    let
+        components =
+            Color.toRgba c
+    in
+    { hex =
+        [ components.red, components.green, components.blue ]
+            |> List.map ((*) 255)
+            |> List.map round
+            |> List.map int255ToHex
+            |> String.concat
+            |> (++) "#"
+    , alpha = components.alpha
+    }
+
+
+int255ToHex : Int -> String
+int255ToHex n =
+    if n < 0 then
+        "00"
+
+    else if n > 255 then
+        "ff"
+
+    else
+        unsafeInt255Digits n
+            |> Tuple.mapBoth unsafeIntToChar unsafeIntToChar
+            |> (\( a, b ) -> String.cons a (String.cons b ""))
+
+
+unsafeInt255Digits : Int -> ( Int, Int )
+unsafeInt255Digits n =
+    let
+        digit1 =
+            n // 16
+
+        digit0 =
+            if digit1 /= 0 then
+                modBy (digit1 * 16) n
+
+            else
+                n
+    in
+    ( digit1, digit0 )
+
+
+unsafeIntToChar : Int -> Char
+unsafeIntToChar i =
+    if i < 10 then
+        String.fromInt i
+            |> String.uncons
+            |> Maybe.map Tuple.first
+            |> Maybe.withDefault '0'
+
+    else
+        case i of
+            10 ->
+                'a'
+
+            11 ->
+                'b'
+
+            12 ->
+                'c'
+
+            13 ->
+                'd'
+
+            14 ->
+                'e'
+
+            15 ->
+                'f'
+
+            _ ->
+                '0'
