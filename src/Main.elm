@@ -387,9 +387,10 @@ operationController id ( refId1, refId2 ) =
     Html.div
         []
         [ Html.text <| "(id:" ++ vectorIdToString id ++ ")"
-        , Html.text <| "id1=" ++ vectorIdToString refId1
+        , Html.text <| "id1="
         , Html.input
             [ HA.type_ "number"
+            , HA.value (vectorIdToString refId1)
             , HE.onInput
                 (\str ->
                     case String.toInt str of
@@ -401,9 +402,10 @@ operationController id ( refId1, refId2 ) =
                 )
             ]
             []
-        , Html.text <| "id2=" ++ vectorIdToString refId2
+        , Html.text <| "id2="
         , Html.input
             [ HA.type_ "number"
+            , HA.value (vectorIdToString refId2)
             , HE.onInput
                 (\str ->
                     case String.toInt str of
@@ -423,9 +425,10 @@ positionController id v =
     Html.div
         []
         [ Html.text <| "(id:" ++ vectorIdToString id ++ ")"
-        , Html.text <| "x=" ++ String.fromFloat v.x
+        , Html.text <| "x="
         , Html.input
             [ HA.type_ "number"
+            , HA.value (String.fromFloat v.x)
             , HE.onInput
                 (\str ->
                     case String.toFloat str of
@@ -437,9 +440,10 @@ positionController id v =
                 )
             ]
             []
-        , Html.text <| "y=" ++ String.fromFloat v.y
+        , Html.text <| "y="
         , Html.input
             [ HA.type_ "number"
+            , HA.value (String.fromFloat v.y)
             , HE.onInput
                 (\str ->
                     case String.toFloat str of
