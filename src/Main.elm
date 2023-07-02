@@ -3,9 +3,15 @@ module Main exposing (..)
 import Browser
 import Color exposing (Color)
 import Dict exposing (Dict)
+import File exposing (File)
+import File.Download
+import File.Select
 import Html exposing (Html)
 import Html.Attributes as HA
 import Html.Events as HE
+import Json.Decode as Decode exposing (Decoder)
+import Json.Encode as Encode
+import Task
 import TypedSvg exposing (..)
 import TypedSvg.Attributes exposing (..)
 import TypedSvg.Core exposing (Svg, text)
@@ -32,6 +38,141 @@ type alias Model =
     }
 
 
+modelJsonDecoder : Decoder Model
+modelJsonDecoder =
+    Decode.map2 Model
+        vectorsDecoder
+        vectorControllersDecoder
+
+
+vectorControllersDecoder : Decoder (Dict VectorId VectorController)
+vectorControllersDecoder =
+    Decode.field "vectorControllers" (Decode.dict vectorControllerDecoder)
+        |> vectorIdDictDecoder
+
+
+vectorControllerDecoder : Decoder VectorController
+vectorControllerDecoder =
+    Decode.field "vectorController" <|
+        Decode.oneOf
+            [ positionControllerDecoder
+            , idRefControllerDecoder
+            ]
+
+
+idRefControllerDecoder : Decoder VectorController
+idRefControllerDecoder =
+    Decode.field "idRef" <|
+        Decode.map
+            (\( id1, id2 ) -> IdRefController id1 id2)
+            tupleDecoder
+
+
+tupleDecoder : Decoder ( Int, Int )
+tupleDecoder =
+    Decode.map2 Tuple.pair
+        (Decode.field "id1" Decode.int)
+        (Decode.field "id2" Decode.int)
+
+
+positionControllerDecoder : Decoder VectorController
+positionControllerDecoder =
+    Decode.field "position" <|
+        Decode.map
+            (\_ -> PositionController)
+            (Decode.null {})
+
+
+vectorsDecoder : Decoder (Dict VectorId (Vector2 Float))
+vectorsDecoder =
+    Decode.field "vectors" (Decode.dict vectorDecoder)
+        |> vectorIdDictDecoder
+
+
+vectorIdDictDecoder : Decoder (Dict String a) -> Decoder (Dict VectorId a)
+vectorIdDictDecoder =
+    Decode.map
+        (\dict ->
+            Dict.foldl
+                (\id value result ->
+                    case String.toInt id of
+                        Just i ->
+                            Dict.insert i value result
+
+                        Nothing ->
+                            result
+                )
+                Dict.empty
+                dict
+        )
+
+
+vectorDecoder : Decoder (Vector2 Float)
+vectorDecoder =
+    Decode.map2 Vector2
+        (Decode.field "x" Decode.float)
+        (Decode.field "y" Decode.float)
+
+
+toJson : Model -> Encode.Value
+toJson model =
+    Encode.object
+        [ ( "vectors"
+          , Encode.dict
+                vectorIdToString
+                vector2FloatToJson
+                model.vectors
+          )
+        , ( "vectorControllers"
+          , Encode.dict
+                vectorIdToString
+                vectorControllerToJson
+                model.vectorControllers
+          )
+        ]
+
+
+vectorControllerToJson : VectorController -> Encode.Value
+vectorControllerToJson controller =
+    Encode.object
+        [ ( "vectorController"
+          , case controller of
+                PositionController ->
+                    positionControllerToJson
+
+                IdRefController id1 id2 ->
+                    idRefControllerToJson ( id1, id2 )
+          )
+        ]
+
+
+positionControllerToJson : Encode.Value
+positionControllerToJson =
+    Encode.object
+        [ ( "position", Encode.null )
+        ]
+
+
+idRefControllerToJson : ( VectorId, VectorId ) -> Encode.Value
+idRefControllerToJson ( id1, id2 ) =
+    Encode.object
+        [ ( "idRef"
+          , Encode.object
+                [ ( "id1", Encode.int id1 )
+                , ( "id2", Encode.int id2 )
+                ]
+          )
+        ]
+
+
+vector2FloatToJson : Vector2 Float -> Encode.Value
+vector2FloatToJson v =
+    Encode.object
+        [ ( "x", Encode.float v.x )
+        , ( "y", Encode.float v.y )
+        ]
+
+
 type alias VectorId =
     Int
 
@@ -50,13 +191,21 @@ type VectorController
 -- Init
 
 
-init : () -> ( Model, Cmd Msg )
+init : () -> ( Model, Cmd SideMsg )
 init _ =
     ( { vectors = Dict.empty, vectorControllers = Dict.empty }, Cmd.none )
 
 
 
 -- Update
+
+
+type SideMsg
+    = Msg Msg
+    | Save
+    | RequestLoad
+    | Load File
+    | Loaded String
 
 
 type Msg
@@ -67,9 +216,39 @@ type Msg
     | ModifyIdRefController VectorId ( VectorId, VectorId )
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
+update : SideMsg -> Model -> ( Model, Cmd SideMsg )
 update msg model =
-    ( updateModel msg model |> updateIdRefsControllers, Cmd.none )
+    case msg of
+        Msg m ->
+            ( updateModel m model |> updateIdRefsControllers, Cmd.none )
+
+        RequestLoad ->
+            ( model
+            , File.Select.file
+                [ "text/json" ]
+                Load
+            )
+
+        Load file ->
+            ( model, Task.perform Loaded (File.toString file) )
+
+        Loaded s ->
+            ( case Decode.decodeString modelJsonDecoder s of
+                Ok loadedModel ->
+                    loadedModel
+
+                Err e ->
+                    model
+            , Cmd.none
+            )
+
+        Save ->
+            ( model
+            , File.Download.string
+                "save.json"
+                "text/json"
+                (Encode.encode 4 (toJson model))
+            )
 
 
 updateModel : Msg -> Model -> Model
@@ -126,15 +305,8 @@ updateIdRefsControllers model =
 -- View
 
 
-view : Model -> Browser.Document Msg
+view : Model -> Browser.Document SideMsg
 view model =
-    let
-        nbCellsX =
-            4
-
-        nbCellsY =
-            4
-    in
     { title = "Unit circle"
     , body =
         [ Html.div
@@ -143,59 +315,90 @@ view model =
             , HA.style "height" "800px"
             , HA.style "background-color" "#b3b3b3"
             ]
-            [ svg
-                [ transform <| [ Translate 100 100 ]
-                , width <| percent 50
-                , height <| percent 50
-                , viewBox 0 0 nbCellsX nbCellsY
-                ]
-                [ g
-                    [ transform <| [ Translate (nbCellsX / 2) (nbCellsY / 2) ]
-                    , width <| percent 100
-                    , height <| percent 100
-                    ]
-                    [ drawUnitCircle
-                    , drawVectors model
-                    ]
-                ]
-            , Html.div
-                [ HA.id "DisplayDebug"
-                , HA.style "width" "40%"
-                , HA.style "height" "100%"
-                , HA.style "float" "right"
-                , HA.style "border-style" "solid"
-                , HA.style "border-width" "1px"
-                ]
-                [ Html.div
-                    [ HA.id "ComponentsDebug"
-                    , HA.style "height" "100%"
-                    , HA.style "display" "flex"
-                    , HA.style "flex-direction" "column"
-                    , HA.style "justify-content" "start"
-                    ]
-                    [ Html.button
-                        [ HE.onClick <| AddVector
-                        ]
-                        [ Html.text "Add vector"
-                        ]
-                    , Html.div
-                        []
-                        (dictMapToList
-                            (\id _ ->
-                                Html.section
-                                    [ HA.style "border-style" "solid"
-                                    , HA.style "border-width" "1px"
-                                    ]
-                                    [ v2ControllerToHtml model id
-                                    ]
-                            )
-                            model.vectorControllers
-                        )
-                    ]
-                ]
+            [ optionView model
+            , Html.map Msg (viewport model)
             ]
         ]
     }
+
+
+optionView : Model -> Html SideMsg
+optionView model =
+    Html.div
+        []
+        [ Html.button
+            [ HE.onClick Save ]
+            [ Html.text "Save" ]
+        , Html.button
+            [ HE.onClick RequestLoad ]
+            [ Html.text "Load" ]
+        ]
+
+
+viewport : Model -> Html Msg
+viewport model =
+    let
+        nbCellsX =
+            4
+
+        nbCellsY =
+            4
+    in
+    Html.div
+        [ HA.style "width" "100%"
+        , HA.style "height" "100%"
+        ]
+        [ svg
+            [ transform <| [ Translate 100 100 ]
+            , width <| percent 50
+            , height <| percent 50
+            , viewBox 0 0 nbCellsX nbCellsY
+            ]
+            [ g
+                [ transform <| [ Translate (nbCellsX / 2) (nbCellsY / 2) ]
+                , width <| percent 100
+                , height <| percent 100
+                ]
+                [ drawUnitCircle
+                , drawVectors model
+                ]
+            ]
+        , Html.div
+            [ HA.id "DisplayDebug"
+            , HA.style "width" "40%"
+            , HA.style "height" "100%"
+            , HA.style "float" "right"
+            , HA.style "border-style" "solid"
+            , HA.style "border-width" "1px"
+            ]
+            [ Html.div
+                [ HA.id "ComponentsDebug"
+                , HA.style "height" "100%"
+                , HA.style "display" "flex"
+                , HA.style "flex-direction" "column"
+                , HA.style "justify-content" "start"
+                ]
+                [ Html.button
+                    [ HE.onClick <| AddVector
+                    ]
+                    [ Html.text "Add vector"
+                    ]
+                , Html.div
+                    []
+                    (dictMapToList
+                        (\id _ ->
+                            Html.section
+                                [ HA.style "border-style" "solid"
+                                , HA.style "border-width" "1px"
+                                ]
+                                [ v2ControllerToHtml model id
+                                ]
+                        )
+                        model.vectorControllers
+                    )
+                ]
+            ]
+        ]
 
 
 drawVectors : Model -> Svg msg
