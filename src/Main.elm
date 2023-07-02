@@ -71,6 +71,7 @@ type SideMsg
     | RequestLoad
     | Load File
     | Loaded String
+    | Reset
 
 
 type Msg
@@ -114,6 +115,9 @@ update msg model =
                 "text/json"
                 (Encode.encode 4 (modelToJson model))
             )
+
+        Reset ->
+            init ()
 
 
 updateModel : Msg -> Model -> Model
@@ -197,6 +201,9 @@ optionView model =
         , Html.button
             [ HE.onClick RequestLoad ]
             [ Html.text "Load" ]
+        , Html.button
+            [ HE.onClick Reset ]
+            [ Html.text "Reset" ]
         ]
 
 
