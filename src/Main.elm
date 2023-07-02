@@ -21,12 +21,14 @@ main =
         }
 
 
-type Msg
-    = Discard
-    | AddVector
-    | ModifyVector VectorId Vector2
-    | ChangeVectorController VectorId VectorController
-    | ModifyIdRefController VectorId ( VectorId, VectorId )
+
+-- Model
+
+
+type alias Model =
+    { vectors : Dict VectorId Vector2
+    , vectorControllers : Dict VectorId VectorController
+    }
 
 
 type alias VectorId =
@@ -36,12 +38,6 @@ type alias VectorId =
 vectorIdToString : VectorId -> String
 vectorIdToString =
     String.fromInt
-
-
-type alias Model =
-    { vectors : Dict VectorId Vector2
-    , vectorControllers : Dict VectorId VectorController
-    }
 
 
 type alias Vector2 =
@@ -60,9 +56,25 @@ type VectorController
     | IdRefController VectorId VectorId
 
 
+
+-- Init
+
+
 init : () -> ( Model, Cmd Msg )
 init _ =
     ( { vectors = Dict.empty, vectorControllers = Dict.empty }, Cmd.none )
+
+
+
+-- Update
+
+
+type Msg
+    = Discard
+    | AddVector
+    | ModifyVector VectorId Vector2
+    | ChangeVectorController VectorId VectorController
+    | ModifyIdRefController VectorId ( VectorId, VectorId )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -118,6 +130,10 @@ updateIdRefsControllers model =
         )
         model
         model.vectorControllers
+
+
+
+-- View
 
 
 view : Model -> Browser.Document Msg
@@ -190,38 +206,6 @@ view model =
             ]
         ]
     }
-
-
-dictMapToList : (k -> v -> a) -> Dict k v -> List a
-dictMapToList func dict =
-    Dict.foldl
-        (\k v list -> func k v :: list)
-        []
-        dict
-
-
-xp length =
-    x <| px length
-
-
-xp1 length =
-    x1 <| px length
-
-
-xp2 length =
-    x2 <| px length
-
-
-yp length =
-    y <| px -length
-
-
-yp1 length =
-    y1 <| px -length
-
-
-yp2 length =
-    y2 <| px -length
 
 
 drawVectors : Model -> Svg msg
@@ -331,6 +315,40 @@ positionController id v =
         ]
 
 
+viewUnitCircle : Svg msg
+viewUnitCircle =
+    g
+        []
+        [ circle
+            [ r <| px 1
+            , fill <| Paint Color.grey
+            ]
+            []
+        , defaultSvgVectorWithText { x = -1, y = 0 }
+        , defaultSvgVectorWithText { x = 1, y = 0 }
+        , defaultSvgVectorWithText { x = 0, y = -1 }
+        , defaultSvgVectorWithText { x = 0, y = 1 }
+        , defaultSvgDiagVectorWithTextDivPi 1 6
+        , defaultSvgDiagVectorWithTextDivPi 1 3
+        , defaultSvgDiagVectorWithTextDivPi 4 6
+        , defaultSvgDiagVectorWithTextDivPi 5 6
+        , defaultSvgDiagVectorWithTextDivPi 1 1
+        , defaultSvgDiagVectorWithTextDivPi -1 6
+        , defaultSvgDiagVectorWithTextDivPi -1 3
+        , defaultSvgDiagVectorWithTextDivPi -4 6
+        , defaultSvgDiagVectorWithTextDivPi -5 6
+        ]
+
+
+subscriptions : Model -> Sub msg
+subscriptions model =
+    Sub.none
+
+
+
+-- Svg vector helpers
+
+
 type alias StrokeWidth =
     Float
 
@@ -434,31 +452,47 @@ svgVector strokeWidth_ color v =
         []
 
 
-viewUnitCircle : Svg msg
-viewUnitCircle =
-    g
+
+-- Svg helpers
+
+
+xp : Float -> TypedSvg.Core.Attribute msg
+xp length =
+    x <| px length
+
+
+xp1 : Float -> TypedSvg.Core.Attribute msg
+xp1 length =
+    x1 <| px length
+
+
+xp2 : Float -> TypedSvg.Core.Attribute msg
+xp2 length =
+    x2 <| px length
+
+
+yp : Float -> TypedSvg.Core.Attribute msg
+yp length =
+    y <| px -length
+
+
+yp1 : Float -> TypedSvg.Core.Attribute msg
+yp1 length =
+    y1 <| px -length
+
+
+yp2 : Float -> TypedSvg.Core.Attribute msg
+yp2 length =
+    y2 <| px -length
+
+
+
+-- Dict helpers
+
+
+dictMapToList : (k -> v -> a) -> Dict k v -> List a
+dictMapToList func dict =
+    Dict.foldl
+        (\k v list -> func k v :: list)
         []
-        [ circle
-            [ r <| px 1
-            , fill <| Paint Color.grey
-            ]
-            []
-        , defaultSvgVectorWithText { x = -1, y = 0 }
-        , defaultSvgVectorWithText { x = 1, y = 0 }
-        , defaultSvgVectorWithText { x = 0, y = -1 }
-        , defaultSvgVectorWithText { x = 0, y = 1 }
-        , defaultSvgDiagVectorWithTextDivPi 1 6
-        , defaultSvgDiagVectorWithTextDivPi 1 3
-        , defaultSvgDiagVectorWithTextDivPi 4 6
-        , defaultSvgDiagVectorWithTextDivPi 5 6
-        , defaultSvgDiagVectorWithTextDivPi 1 1
-        , defaultSvgDiagVectorWithTextDivPi -1 6
-        , defaultSvgDiagVectorWithTextDivPi -1 3
-        , defaultSvgDiagVectorWithTextDivPi -4 6
-        , defaultSvgDiagVectorWithTextDivPi -5 6
-        ]
-
-
-subscriptions : Model -> Sub msg
-subscriptions model =
-    Sub.none
+        dict
