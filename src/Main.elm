@@ -324,7 +324,7 @@ idRefController id ( refId1, refId2 ) =
         [ Html.text <| "(id:" ++ vectorIdToString id ++ ")"
         , Html.text <| "id1=" ++ vectorIdToString refId1
         , Html.input
-            [ HA.type_ "float"
+            [ HA.type_ "number"
             , HE.onInput
                 (\str ->
                     case String.toInt str of
@@ -338,7 +338,7 @@ idRefController id ( refId1, refId2 ) =
             []
         , Html.text <| "id2=" ++ vectorIdToString refId2
         , Html.input
-            [ HA.type_ "float"
+            [ HA.type_ "number"
             , HE.onInput
                 (\str ->
                     case String.toInt str of
@@ -360,7 +360,7 @@ positionController id v =
         [ Html.text <| "(id:" ++ vectorIdToString id ++ ")"
         , Html.text <| "x=" ++ String.fromFloat v.x
         , Html.input
-            [ HA.type_ "float"
+            [ HA.type_ "number"
             , HE.onInput
                 (\str ->
                     case String.toFloat str of
@@ -374,7 +374,7 @@ positionController id v =
             []
         , Html.text <| "y=" ++ String.fromFloat v.y
         , Html.input
-            [ HA.type_ "float"
+            [ HA.type_ "number"
             , HE.onInput
                 (\str ->
                     case String.toFloat str of
