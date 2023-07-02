@@ -288,10 +288,26 @@ v2ControllerToHtml model id =
                 , Html.select
                     []
                     [ Html.option
-                        [ HE.onClick (ChangeVectorController id PositionController) ]
+                        [ HE.onClick (ChangeVectorController id PositionController)
+                        , HA.selected <|
+                            case controller of
+                                PositionController ->
+                                    True
+
+                                _ ->
+                                    False
+                        ]
                         [ Html.text "Position" ]
                     , Html.option
-                        [ HE.onClick (ChangeVectorController id (IdRefController -1 -1)) ]
+                        [ HE.onClick (ChangeVectorController id (IdRefController -1 -1))
+                        , HA.selected <|
+                            case controller of
+                                IdRefController _ _ ->
+                                    True
+
+                                _ ->
+                                    False
+                        ]
                         [ Html.text "IdRef" ]
                     ]
                 ]
