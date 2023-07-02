@@ -7,7 +7,7 @@ import Html exposing (Html)
 import Html.Attributes as HA
 import Html.Events as HE
 import TypedSvg exposing (..)
-import TypedSvg.Attributes as AT exposing (..)
+import TypedSvg.Attributes exposing (..)
 import TypedSvg.Core exposing (Svg, text)
 import TypedSvg.Types exposing (..)
 import Vector2 exposing (Vector2)
@@ -331,7 +331,7 @@ drawUnitCircle =
 
 
 subscriptions : Model -> Sub msg
-subscriptions model =
+subscriptions _ =
     Sub.none
 
 
