@@ -38,141 +38,6 @@ type alias Model =
     }
 
 
-modelJsonDecoder : Decoder Model
-modelJsonDecoder =
-    Decode.map2 Model
-        vectorsDecoder
-        vectorControllersDecoder
-
-
-vectorControllersDecoder : Decoder (Dict VectorId VectorController)
-vectorControllersDecoder =
-    Decode.field "vectorControllers" (Decode.dict vectorControllerDecoder)
-        |> vectorIdDictDecoder
-
-
-vectorControllerDecoder : Decoder VectorController
-vectorControllerDecoder =
-    Decode.field "vectorController" <|
-        Decode.oneOf
-            [ positionControllerDecoder
-            , idRefControllerDecoder
-            ]
-
-
-idRefControllerDecoder : Decoder VectorController
-idRefControllerDecoder =
-    Decode.field "idRef" <|
-        Decode.map
-            (\( id1, id2 ) -> IdRefController id1 id2)
-            tupleDecoder
-
-
-tupleDecoder : Decoder ( Int, Int )
-tupleDecoder =
-    Decode.map2 Tuple.pair
-        (Decode.field "id1" Decode.int)
-        (Decode.field "id2" Decode.int)
-
-
-positionControllerDecoder : Decoder VectorController
-positionControllerDecoder =
-    Decode.field "position" <|
-        Decode.map
-            (\_ -> PositionController)
-            (Decode.null {})
-
-
-vectorsDecoder : Decoder (Dict VectorId (Vector2 Float))
-vectorsDecoder =
-    Decode.field "vectors" (Decode.dict vectorDecoder)
-        |> vectorIdDictDecoder
-
-
-vectorIdDictDecoder : Decoder (Dict String a) -> Decoder (Dict VectorId a)
-vectorIdDictDecoder =
-    Decode.map
-        (\dict ->
-            Dict.foldl
-                (\id value result ->
-                    case String.toInt id of
-                        Just i ->
-                            Dict.insert i value result
-
-                        Nothing ->
-                            result
-                )
-                Dict.empty
-                dict
-        )
-
-
-vectorDecoder : Decoder (Vector2 Float)
-vectorDecoder =
-    Decode.map2 Vector2
-        (Decode.field "x" Decode.float)
-        (Decode.field "y" Decode.float)
-
-
-toJson : Model -> Encode.Value
-toJson model =
-    Encode.object
-        [ ( "vectors"
-          , Encode.dict
-                vectorIdToString
-                vector2FloatToJson
-                model.vectors
-          )
-        , ( "vectorControllers"
-          , Encode.dict
-                vectorIdToString
-                vectorControllerToJson
-                model.vectorControllers
-          )
-        ]
-
-
-vectorControllerToJson : VectorController -> Encode.Value
-vectorControllerToJson controller =
-    Encode.object
-        [ ( "vectorController"
-          , case controller of
-                PositionController ->
-                    positionControllerToJson
-
-                IdRefController id1 id2 ->
-                    idRefControllerToJson ( id1, id2 )
-          )
-        ]
-
-
-positionControllerToJson : Encode.Value
-positionControllerToJson =
-    Encode.object
-        [ ( "position", Encode.null )
-        ]
-
-
-idRefControllerToJson : ( VectorId, VectorId ) -> Encode.Value
-idRefControllerToJson ( id1, id2 ) =
-    Encode.object
-        [ ( "idRef"
-          , Encode.object
-                [ ( "id1", Encode.int id1 )
-                , ( "id2", Encode.int id2 )
-                ]
-          )
-        ]
-
-
-vector2FloatToJson : Vector2 Float -> Encode.Value
-vector2FloatToJson v =
-    Encode.object
-        [ ( "x", Encode.float v.x )
-        , ( "y", Encode.float v.y )
-        ]
-
-
 type alias VectorId =
     Int
 
@@ -643,6 +508,149 @@ svgVector strokeWidth_ color v =
         , strokeWidth <| px strokeWidth_
         ]
         []
+
+
+
+-- Model Json decoder
+
+
+modelJsonDecoder : Decoder Model
+modelJsonDecoder =
+    Decode.map2 Model
+        vectorsDecoder
+        vectorControllersDecoder
+
+
+vectorControllersDecoder : Decoder (Dict VectorId VectorController)
+vectorControllersDecoder =
+    Decode.field "vectorControllers" (Decode.dict vectorControllerDecoder)
+        |> vectorIdDictDecoder
+
+
+vectorControllerDecoder : Decoder VectorController
+vectorControllerDecoder =
+    Decode.field "vectorController" <|
+        Decode.oneOf
+            [ positionControllerDecoder
+            , idRefControllerDecoder
+            ]
+
+
+idRefControllerDecoder : Decoder VectorController
+idRefControllerDecoder =
+    Decode.field "idRef" <|
+        Decode.map
+            (\( id1, id2 ) -> IdRefController id1 id2)
+            tupleDecoder
+
+
+tupleDecoder : Decoder ( Int, Int )
+tupleDecoder =
+    Decode.map2 Tuple.pair
+        (Decode.field "id1" Decode.int)
+        (Decode.field "id2" Decode.int)
+
+
+positionControllerDecoder : Decoder VectorController
+positionControllerDecoder =
+    Decode.field "position" <|
+        Decode.map
+            (\_ -> PositionController)
+            (Decode.null {})
+
+
+vectorsDecoder : Decoder (Dict VectorId (Vector2 Float))
+vectorsDecoder =
+    Decode.field "vectors" (Decode.dict vectorDecoder)
+        |> vectorIdDictDecoder
+
+
+vectorIdDictDecoder : Decoder (Dict String a) -> Decoder (Dict VectorId a)
+vectorIdDictDecoder =
+    Decode.map
+        (\dict ->
+            Dict.foldl
+                (\id value result ->
+                    case String.toInt id of
+                        Just i ->
+                            Dict.insert i value result
+
+                        Nothing ->
+                            result
+                )
+                Dict.empty
+                dict
+        )
+
+
+vectorDecoder : Decoder (Vector2 Float)
+vectorDecoder =
+    Decode.map2 Vector2
+        (Decode.field "x" Decode.float)
+        (Decode.field "y" Decode.float)
+
+
+
+-- Model Json Encoder
+
+
+toJson : Model -> Encode.Value
+toJson model =
+    Encode.object
+        [ ( "vectors"
+          , Encode.dict
+                vectorIdToString
+                vector2FloatToJson
+                model.vectors
+          )
+        , ( "vectorControllers"
+          , Encode.dict
+                vectorIdToString
+                vectorControllerToJson
+                model.vectorControllers
+          )
+        ]
+
+
+vectorControllerToJson : VectorController -> Encode.Value
+vectorControllerToJson controller =
+    Encode.object
+        [ ( "vectorController"
+          , case controller of
+                PositionController ->
+                    positionControllerToJson
+
+                IdRefController id1 id2 ->
+                    idRefControllerToJson ( id1, id2 )
+          )
+        ]
+
+
+positionControllerToJson : Encode.Value
+positionControllerToJson =
+    Encode.object
+        [ ( "position", Encode.null )
+        ]
+
+
+idRefControllerToJson : ( VectorId, VectorId ) -> Encode.Value
+idRefControllerToJson ( id1, id2 ) =
+    Encode.object
+        [ ( "idRef"
+          , Encode.object
+                [ ( "id1", Encode.int id1 )
+                , ( "id2", Encode.int id2 )
+                ]
+          )
+        ]
+
+
+vector2FloatToJson : Vector2 Float -> Encode.Value
+vector2FloatToJson v =
+    Encode.object
+        [ ( "x", Encode.float v.x )
+        , ( "y", Encode.float v.y )
+        ]
 
 
 
