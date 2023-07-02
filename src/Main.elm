@@ -154,7 +154,7 @@ view model =
                     , width <| percent 100
                     , height <| percent 100
                     ]
-                    [ viewUnitCircle
+                    [ drawUnitCircle
                     , drawVectors model
                     ]
                 ]
@@ -305,8 +305,8 @@ positionController id v =
         ]
 
 
-viewUnitCircle : Svg msg
-viewUnitCircle =
+drawUnitCircle : Svg msg
+drawUnitCircle =
     g
         []
         [ circle
