@@ -77,6 +77,7 @@ type SideMsg
 type Msg
     = Discard
     | AddVector
+    | RemoveVector VectorId
     | ModifyVector VectorId (Vector2 Float)
     | ChangeVectorController VectorId VectorController
     | ModifyIdRefController VectorId ( VectorId, VectorId )
@@ -132,6 +133,12 @@ updateModel msg model =
                     Dict.insert (Dict.size model.vectors) { x = 0, y = 0 } model.vectors
                 , vectorControllers =
                     Dict.insert (Dict.size model.vectorControllers) PositionController model.vectorControllers
+            }
+
+        RemoveVector id ->
+            { model
+                | vectors = Dict.remove id model.vectors
+                , vectorControllers = Dict.remove id model.vectorControllers
             }
 
         ModifyVector id vector ->
@@ -317,6 +324,11 @@ v2ControllerToHtml model id =
                         ]
                         [ Html.text "IdRef" ]
                     ]
+                , Html.button
+                    [ HE.onClick (RemoveVector id)
+                    , HA.style "color" "red"
+                    ]
+                    [ Html.text "Remove" ]
                 ]
         )
         (Dict.get id model.vectors)
