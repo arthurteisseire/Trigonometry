@@ -701,10 +701,11 @@ operationControllerDecoder =
 
 operationDecoder : Decoder Operation
 operationDecoder =
-    Decode.oneOf
-        [ Decode.field "add" <| Decode.map (\_ -> Add) (Decode.null {})
-        , Decode.field "sub" <| Decode.map (\_ -> Sub) (Decode.null {})
-        ]
+    Decode.field "op" <|
+        Decode.oneOf
+            [ Decode.field "add" <| Decode.map (\_ -> Add) (Decode.null {})
+            , Decode.field "sub" <| Decode.map (\_ -> Sub) (Decode.null {})
+            ]
 
 
 tupleDecoder : Decoder ( Int, Int )
