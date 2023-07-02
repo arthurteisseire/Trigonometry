@@ -67,7 +67,7 @@ init _ =
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    ( updateModel msg model, Cmd.none )
+    ( updateModel msg model |> updateIdRefsControllers, Cmd.none )
 
 
 updateModel : Msg -> Model -> Model
@@ -89,17 +89,14 @@ updateModel msg model =
                 | vectors =
                     Dict.insert id vector model.vectors
             }
-                |> updateIdRefsControllers
 
         ChangeVectorController id controller ->
             { model | vectorControllers = Dict.insert id controller model.vectorControllers }
-                |> updateIdRefsControllers
 
         ModifyIdRefController id ( id1, id2 ) ->
             { model
                 | vectorControllers = Dict.insert id (IdRefController id1 id2) model.vectorControllers
             }
-                |> updateIdRefsControllers
 
 
 updateIdRefsControllers : Model -> Model
