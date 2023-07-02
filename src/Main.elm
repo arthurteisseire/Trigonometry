@@ -112,7 +112,7 @@ update msg model =
             , File.Download.string
                 "save.json"
                 "text/json"
-                (Encode.encode 4 (toJson model))
+                (Encode.encode 4 (modelToJson model))
             )
 
 
@@ -594,8 +594,8 @@ vectorDecoder =
 -- Model Json Encoder
 
 
-toJson : Model -> Encode.Value
-toJson model =
+modelToJson : Model -> Encode.Value
+modelToJson model =
     Encode.object
         [ ( "vectors"
           , Encode.dict
