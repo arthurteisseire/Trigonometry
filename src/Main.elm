@@ -25,6 +25,8 @@ type Msg
     = Discard
     | AddVector
     | ModifyVector VectorId Vector2
+    | ChangeVectorController VectorId VectorController
+    | ModifyIdRefController VectorId ( VectorId, VectorId )
 
 
 type alias VectorId =
@@ -38,12 +40,29 @@ vectorIdToString =
 
 type alias Model =
     { vectors : Dict VectorId Vector2
+    , vectorControllers : Dict VectorId VectorController
     }
+
+
+type alias Vector2 =
+    { x : Float
+    , y : Float
+    }
+
+
+addVectors : Vector2 -> Vector2 -> Vector2
+addVectors a b =
+    { x = a.x + b.x, y = a.y + b.y }
+
+
+type VectorController
+    = PositionController
+    | IdRefController VectorId VectorId
 
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( { vectors = Dict.empty }, Cmd.none )
+    ( { vectors = Dict.empty, vectorControllers = Dict.empty }, Cmd.none )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -58,13 +77,50 @@ updateModel msg model =
             model
 
         AddVector ->
-            { model | vectors = Dict.insert (Dict.size model.vectors) { x = 0, y = 0 } model.vectors }
+            { model
+                | vectors =
+                    Dict.insert (Dict.size model.vectors) { x = 0, y = 0 } model.vectors
+                , vectorControllers =
+                    Dict.insert (Dict.size model.vectorControllers) PositionController model.vectorControllers
+            }
 
         ModifyVector id vector ->
             { model
                 | vectors =
                     Dict.insert id vector model.vectors
             }
+                |> updateIdRefsControllers
+
+        ChangeVectorController id controller ->
+            { model | vectorControllers = Dict.insert id controller model.vectorControllers }
+                |> updateIdRefsControllers
+
+        ModifyIdRefController id ( id1, id2 ) ->
+            { model
+                | vectorControllers = Dict.insert id (IdRefController id1 id2) model.vectorControllers
+            }
+                |> updateIdRefsControllers
+
+
+updateIdRefsControllers : Model -> Model
+updateIdRefsControllers model =
+    Dict.foldl
+        (\id controller accModel ->
+            case controller of
+                IdRefController id1 id2 ->
+                    Maybe.map2
+                        (\v1 v2 ->
+                            { accModel | vectors = Dict.insert id (addVectors v1 v2) accModel.vectors }
+                        )
+                        (Dict.get id1 model.vectors)
+                        (Dict.get id2 model.vectors)
+                        |> Maybe.withDefault accModel
+
+                PositionController ->
+                    accModel
+        )
+        model
+        model.vectorControllers
 
 
 view : Model -> Browser.Document Msg
@@ -101,7 +157,7 @@ view model =
                 ]
             , Html.div
                 [ HA.id "DisplayDebug"
-                , HA.style "width" "30%"
+                , HA.style "width" "40%"
                 , HA.style "height" "100%"
                 , HA.style "float" "right"
                 , HA.style "border-style" "solid"
@@ -122,15 +178,15 @@ view model =
                     , Html.div
                         []
                         (dictMapToList
-                            (\id vector ->
+                            (\id _ ->
                                 Html.section
                                     [ HA.style "border-style" "solid"
                                     , HA.style "border-width" "1px"
                                     ]
-                                    [ v2ToHtml id vector
+                                    [ v2ControllerToHtml model id
                                     ]
                             )
-                            model.vectors
+                            model.vectorControllers
                         )
                     ]
                 ]
@@ -171,12 +227,6 @@ yp2 length =
     y2 <| px -length
 
 
-type alias Vector2 =
-    { x : Float
-    , y : Float
-    }
-
-
 drawVectors : Model -> Svg msg
 drawVectors model =
     g
@@ -184,8 +234,72 @@ drawVectors model =
         (dictMapToList (\_ -> svgVector 0.03 Color.purple) model.vectors)
 
 
-v2ToHtml : VectorId -> Vector2 -> Html Msg
-v2ToHtml id v =
+v2ControllerToHtml : Model -> VectorId -> Html Msg
+v2ControllerToHtml model id =
+    Maybe.map2
+        (\v controller ->
+            Html.div
+                []
+                [ case controller of
+                    PositionController ->
+                        positionController id v
+
+                    IdRefController id1 id2 ->
+                        idRefController id ( id1, id2 )
+                , Html.select
+                    []
+                    [ Html.option
+                        [ HE.onClick (ChangeVectorController id PositionController) ]
+                        [ Html.text "Position" ]
+                    , Html.option
+                        [ HE.onClick (ChangeVectorController id (IdRefController -1 -1)) ]
+                        [ Html.text "IdRef" ]
+                    ]
+                ]
+        )
+        (Dict.get id model.vectors)
+        (Dict.get id model.vectorControllers)
+        |> Maybe.withDefault (Html.text "")
+
+
+idRefController : VectorId -> ( VectorId, VectorId ) -> Html Msg
+idRefController id ( refId1, refId2 ) =
+    Html.div
+        []
+        [ Html.text <| "(id:" ++ vectorIdToString id ++ ")"
+        , Html.text <| "id1=" ++ vectorIdToString refId1
+        , Html.input
+            [ HA.type_ "float"
+            , HE.onInput
+                (\str ->
+                    case String.toInt str of
+                        Nothing ->
+                            Discard
+
+                        Just value ->
+                            ModifyIdRefController id ( value, refId2 )
+                )
+            ]
+            []
+        , Html.text <| "id2=" ++ vectorIdToString refId2
+        , Html.input
+            [ HA.type_ "float"
+            , HE.onInput
+                (\str ->
+                    case String.toInt str of
+                        Nothing ->
+                            Discard
+
+                        Just value ->
+                            ModifyIdRefController id ( refId1, value )
+                )
+            ]
+            []
+        ]
+
+
+positionController : VectorId -> Vector2 -> Html Msg
+positionController id v =
     Html.div
         []
         [ Html.text <| "(id:" ++ vectorIdToString id ++ ")"
