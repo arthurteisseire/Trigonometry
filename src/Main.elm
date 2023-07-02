@@ -51,7 +51,7 @@ vectorIdToString =
 
 type VectorController
     = PositionController
-    | IdRefController VectorId VectorId
+    | OperationController VectorId VectorId
 
 
 
@@ -88,14 +88,14 @@ type Msg
     | ModifyVector VectorId (Vector2 Float)
     | ChangeVectorColor VectorId Color
     | ChangeVectorController VectorId VectorController
-    | ModifyIdRefController VectorId ( VectorId, VectorId )
+    | ModifyOperationController VectorId ( VectorId, VectorId )
 
 
 update : SideMsg -> Model -> ( Model, Cmd SideMsg )
 update msg model =
     case msg of
         Msg m ->
-            ( updateModel m model |> updateIdRefsControllers, Cmd.none )
+            ( updateModel m model |> updateOperationsControllers, Cmd.none )
 
         RequestLoad ->
             ( model
@@ -167,18 +167,18 @@ updateModel msg model =
         ChangeVectorController id controller ->
             { model | vectorControllers = Dict.insert id controller model.vectorControllers }
 
-        ModifyIdRefController id ( id1, id2 ) ->
+        ModifyOperationController id ( id1, id2 ) ->
             { model
-                | vectorControllers = Dict.insert id (IdRefController id1 id2) model.vectorControllers
+                | vectorControllers = Dict.insert id (OperationController id1 id2) model.vectorControllers
             }
 
 
-updateIdRefsControllers : Model -> Model
-updateIdRefsControllers model =
+updateOperationsControllers : Model -> Model
+updateOperationsControllers model =
     Dict.foldl
         (\id controller accModel ->
             case controller of
-                IdRefController id1 id2 ->
+                OperationController id1 id2 ->
                     Maybe.map2
                         (\v1 v2 ->
                             { accModel | vectors = Dict.insert id (Vector2.add v1 v2) accModel.vectors }
@@ -324,8 +324,8 @@ v2ControllerToHtml model id =
                     PositionController ->
                         positionController id v
 
-                    IdRefController id1 id2 ->
-                        idRefController id ( id1, id2 )
+                    OperationController id1 id2 ->
+                        operationController id ( id1, id2 )
                 , Html.select
                     []
                     [ Html.option
@@ -340,16 +340,16 @@ v2ControllerToHtml model id =
                         ]
                         [ Html.text "Position" ]
                     , Html.option
-                        [ HE.onClick (ChangeVectorController id (IdRefController -1 -1))
+                        [ HE.onClick (ChangeVectorController id (OperationController -1 -1))
                         , HA.selected <|
                             case controller of
-                                IdRefController _ _ ->
+                                OperationController _ _ ->
                                     True
 
                                 _ ->
                                     False
                         ]
-                        [ Html.text "IdRef" ]
+                        [ Html.text "Operation" ]
                     ]
                 , Html.input
                     [ HA.type_ "color"
@@ -382,8 +382,8 @@ v2ControllerToHtml model id =
         |> Maybe.withDefault (Html.text "")
 
 
-idRefController : VectorId -> ( VectorId, VectorId ) -> Html Msg
-idRefController id ( refId1, refId2 ) =
+operationController : VectorId -> ( VectorId, VectorId ) -> Html Msg
+operationController id ( refId1, refId2 ) =
     Html.div
         []
         [ Html.text <| "(id:" ++ vectorIdToString id ++ ")"
@@ -397,7 +397,7 @@ idRefController id ( refId1, refId2 ) =
                             Discard
 
                         Just value ->
-                            ModifyIdRefController id ( value, refId2 )
+                            ModifyOperationController id ( value, refId2 )
                 )
             ]
             []
@@ -411,7 +411,7 @@ idRefController id ( refId1, refId2 ) =
                             Discard
 
                         Just value ->
-                            ModifyIdRefController id ( refId1, value )
+                            ModifyOperationController id ( refId1, value )
                 )
             ]
             []
@@ -629,15 +629,15 @@ vectorControllerDecoder =
     Decode.field "vectorController" <|
         Decode.oneOf
             [ positionControllerDecoder
-            , idRefControllerDecoder
+            , operationControllerDecoder
             ]
 
 
-idRefControllerDecoder : Decoder VectorController
-idRefControllerDecoder =
-    Decode.field "idRef" <|
+operationControllerDecoder : Decoder VectorController
+operationControllerDecoder =
+    Decode.field "operation" <|
         Decode.map
-            (\( id1, id2 ) -> IdRefController id1 id2)
+            (\( id1, id2 ) -> OperationController id1 id2)
             tupleDecoder
 
 
@@ -737,8 +737,8 @@ vectorControllerToJson controller =
                 PositionController ->
                     positionControllerToJson
 
-                IdRefController id1 id2 ->
-                    idRefControllerToJson ( id1, id2 )
+                OperationController id1 id2 ->
+                    operationControllerToJson ( id1, id2 )
           )
         ]
 
@@ -750,10 +750,10 @@ positionControllerToJson =
         ]
 
 
-idRefControllerToJson : ( VectorId, VectorId ) -> Encode.Value
-idRefControllerToJson ( id1, id2 ) =
+operationControllerToJson : ( VectorId, VectorId ) -> Encode.Value
+operationControllerToJson ( id1, id2 ) =
     Encode.object
-        [ ( "idRef"
+        [ ( "operation"
           , Encode.object
                 [ ( "id1", Encode.int id1 )
                 , ( "id2", Encode.int id2 )
