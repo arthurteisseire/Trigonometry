@@ -10,6 +10,7 @@ import TypedSvg exposing (..)
 import TypedSvg.Attributes as AT exposing (..)
 import TypedSvg.Core exposing (Svg, text)
 import TypedSvg.Types exposing (..)
+import Vector2 exposing (Vector2)
 
 
 main =
@@ -26,7 +27,7 @@ main =
 
 
 type alias Model =
-    { vectors : Dict VectorId Vector2
+    { vectors : Dict VectorId (Vector2 Float)
     , vectorControllers : Dict VectorId VectorController
     }
 
@@ -38,17 +39,6 @@ type alias VectorId =
 vectorIdToString : VectorId -> String
 vectorIdToString =
     String.fromInt
-
-
-type alias Vector2 =
-    { x : Float
-    , y : Float
-    }
-
-
-addVectors : Vector2 -> Vector2 -> Vector2
-addVectors a b =
-    { x = a.x + b.x, y = a.y + b.y }
 
 
 type VectorController
@@ -72,7 +62,7 @@ init _ =
 type Msg
     = Discard
     | AddVector
-    | ModifyVector VectorId Vector2
+    | ModifyVector VectorId (Vector2 Float)
     | ChangeVectorController VectorId VectorController
     | ModifyIdRefController VectorId ( VectorId, VectorId )
 
@@ -119,7 +109,7 @@ updateIdRefsControllers model =
                 IdRefController id1 id2 ->
                     Maybe.map2
                         (\v1 v2 ->
-                            { accModel | vectors = Dict.insert id (addVectors v1 v2) accModel.vectors }
+                            { accModel | vectors = Dict.insert id (Vector2.add v1 v2) accModel.vectors }
                         )
                         (Dict.get id1 model.vectors)
                         (Dict.get id2 model.vectors)
@@ -279,7 +269,7 @@ idRefController id ( refId1, refId2 ) =
         ]
 
 
-positionController : VectorId -> Vector2 -> Html Msg
+positionController : VectorId -> Vector2 Float -> Html Msg
 positionController id v =
     Html.div
         []
@@ -381,7 +371,7 @@ defaultSvgDiagVectorWithTextDivPi numerator denominator =
         }
 
 
-defaultSvgVectorWithText : Vector2 -> Svg msg
+defaultSvgVectorWithText : Vector2 Float -> Svg msg
 defaultSvgVectorWithText v =
     defaultSvgVectorWithCustomText
         ("("
@@ -393,7 +383,7 @@ defaultSvgVectorWithText v =
         v
 
 
-defaultSvgVectorWithCustomText : String -> Vector2 -> Svg msg
+defaultSvgVectorWithCustomText : String -> Vector2 Float -> Svg msg
 defaultSvgVectorWithCustomText s v =
     g
         []
@@ -407,7 +397,7 @@ defaultSvgVectorWithCustomText s v =
         ]
 
 
-defaultSvgVectorWithSquare : Vector2 -> Svg msg
+defaultSvgVectorWithSquare : Vector2 Float -> Svg msg
 defaultSvgVectorWithSquare v =
     g []
         [ defaultSvgVector v
@@ -434,12 +424,12 @@ defaultSvgVectorWithSquare v =
         ]
 
 
-defaultSvgVector : Vector2 -> Svg msg
+defaultSvgVector : Vector2 Float -> Svg msg
 defaultSvgVector =
     svgVector 0.02 Color.blue
 
 
-svgVector : StrokeWidth -> Color -> Vector2 -> Svg msg
+svgVector : StrokeWidth -> Color -> Vector2 Float -> Svg msg
 svgVector strokeWidth_ color v =
     line
         [ xp1 0
